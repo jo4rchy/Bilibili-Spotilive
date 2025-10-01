@@ -1,6 +1,8 @@
 # New-Bilibili-Spotilive v1.0.0 Pre-Release
 当前为预览版，轻度测试后无显著bug
 
+**点歌机需要Spotify正式会员**
+
 下载：[New-Bilibili-Spotilive v1.0.0 Pre-Release](https://github.com/jo4rchy/Bilibili-Spotilive/releases/tag/r-v1.0.0)
 
 ## 点歌机后端
