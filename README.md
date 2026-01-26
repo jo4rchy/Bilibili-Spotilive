@@ -34,6 +34,14 @@
   - auth_code：b站直播身份码
   - spotify client_id
   - spotify client_secret
+ 
+如何获取spotify api：
+- Spotify API
+  - 前往[Spotify Developer](https://developer.spotify.com/dashboard) 如图页面创建Spotify 的API
+  - Redirect Url填写 `http://127.0.0.1:8888/callback`,api和sdk不需要勾选
+  - 创建好后可以获得Spotify 的client ID和secret 
+
+![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/spotify_api.png)
 
 前端使用说明：
 - 控制面板地址：http://localhost:5001/app/
