@@ -1,4 +1,3 @@
-import asyncio
 from typing import Optional
 from handler.queue_manager import song_queue, song_queue_streamer, song_queue_guard
 

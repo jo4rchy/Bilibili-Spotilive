@@ -32,7 +32,7 @@ async def _emit_queue_status():
     if queue_msg:
         await emit_queue_to_widget(queue_msg)
     else:
-        guide_msg = create_message_message("点歌队列空", "发送：点歌 + 歌名 即可点歌")
+        guide_msg = create_message_message("点歌队列空", "点歌发送：点歌 歌名(+歌手)")
         clear_queue()
         await emit_message_to_widget(guide_msg)
 
@@ -54,7 +54,6 @@ async def _play_song_item(item: Dict, room_id: str = ""):
     current_request = item
     song = item["song"]
     user = item["request"]["user"]
-    print(f"[{room_id}]{timestamp()} 播放点歌 → {song.get('name')} (点歌人: {user['uname']})")
     await spotify_ctrl.play_song(song)
     await _emit_queue_status()
 
@@ -70,14 +69,12 @@ async def player_loop(room_id: str):
 
             if not is_playing and current_request is None:
                 pass
-
             elif not is_playing and current_request is not None:
                 current_request = None
                 next_item = await get_next_item()
                 if next_item:
                     await _play_song_item(next_item, room_id)
                 else:
-                    print(f"[{room_id}]{timestamp()} 恢复默认歌单")
                     await spotify_ctrl.restore_default_playlist()
                     await _emit_queue_status()
             
@@ -96,11 +93,10 @@ async def play_next_song() -> bool:
         song = next_item["song"]
         user = next_item["request"]["user"]
         await _feedback_and_update(
-            f"切歌: {song['name']}",
-            f"由: {user['uname']}",
+            f"切歌成功",
+            f"即将播放: {song.get('name', '')} - {song.get('artists', [{}])[0].get('name', '')}",
             song
         )
-        print(f"[]{timestamp()} 自动播放下一首：{song['name']} (点歌人 {user['uname']})")
         await _play_song_item(next_item)
     else:
         current_request = None
@@ -108,7 +104,6 @@ async def play_next_song() -> bool:
             "切歌成功",
             "点歌列表空，播放默认歌单"
         )
-        print(f"[]{timestamp()} 恢复默认歌单")
         await spotify_ctrl.restore_default_playlist()
     return True
 
@@ -121,7 +116,7 @@ async def next_song(request: Dict, next_perm: bool) -> bool:
             success_message = {
                 "user": f"请求者: {user.get('uname', '未知用户')}",
                 "face": user.get("face", None),
-                "message": "下一首成功: 下一首"
+                "message": "切歌成功: 下一首"
             }
             await emit_request_to_electron(success_message)
             return await play_next_song()
@@ -130,7 +125,7 @@ async def next_song(request: Dict, next_perm: bool) -> bool:
             failure_message = {
                 "user": f"请求者: {user.get('uname', '未知用户')}",
                 "face": user.get("face", None),
-                "message": "下一首失败: 权限不足"
+                "message": "切歌失败: 权限不足"
             }
             await emit_request_to_electron(failure_message)
             await _feedback_and_update("切歌权限不足", "切歌失败")
@@ -155,15 +150,33 @@ async def next_song(request: Dict, next_perm: bool) -> bool:
         await emit_request_to_electron(success_message)
         return await play_next_song()
 
-    failure_message = {
-        "user": f"请求者: {user.get('uname', '未知用户')}",
-        "face": user.get("face", None),
-        "message": "下一首失败: 当前大航海点歌"
-    }
-    await emit_request_to_electron(failure_message)
-
-    await _feedback_and_update("无法跳过大航海点歌", "切歌失败")
-    return False
+    if requester.get("privilege_type", 0) > 0:
+        failure_message = {
+            "user": f"请求者: {user.get('uname', '未知用户')}",
+            "face": user.get("face", None),
+            "message": "下一首失败: 当前其他大航海点歌"
+        }
+        await emit_request_to_electron(failure_message)
+        await _feedback_and_update("无法跳过其他大航海点歌", "切歌失败")
+        return False
+    elif requester.get("is_streamer"):
+        failure_message = {
+            "user": f"请求者: {user.get('uname', '未知用户')}",
+            "face": user.get("face", None),
+            "message": "下一首失败: 当前主播点歌"
+        }
+        await emit_request_to_electron(failure_message)
+        await _feedback_and_update("无法跳过主播点歌", "切歌失败")
+        return False
+    else:
+        failure_message = {
+            "user": f"请求者: {user.get('uname', '未知用户')}",
+            "face": user.get("face", None),
+            "message": "下一首失败: 非本人点歌"
+        }
+        await emit_request_to_electron(failure_message)
+        await _feedback_and_update("无法跳过非本人点歌", "切歌失败")
+        return False
 
 async def request_song(request: Dict, request_perm: bool) -> bool:
     global current_request
@@ -195,6 +208,11 @@ async def request_song(request: Dict, request_perm: bool) -> bool:
         artist = song.get("artists", [{}])[0].get("name", "")
         text = f"点歌成功: {song.get('name', 'Unknown')} - {artist}"
 
+        # if request.get("request", {}).get("start_ms") is not None:
+        #     start_ms = request["request"]["start_ms"]
+        #     spotify_ctrl._play_song(song, start_ms=start_ms)
+        #     return True
+
         if current_request is None:
             success_message = {
                 "user": f"请求者: {user.get('uname', '未知用户')}",
@@ -202,9 +220,7 @@ async def request_song(request: Dict, request_perm: bool) -> bool:
                 "message": f"点歌: {song.get('name', '')} - {song.get('artists', [{}])[0].get('name', '')}"
             }
             await emit_request_to_electron(success_message)
-
             await _feedback_and_update(text, "立即播放", song)
-            print(f"[{user['uname']}] 播放点歌 → {song.get('name')}")
             await _play_song_item({"song": song, "request": request})
         else:
             success_message = {

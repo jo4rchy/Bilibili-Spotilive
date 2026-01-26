@@ -12,11 +12,10 @@ def load_config():
     if os.path.exists(CONFIG_FILE):
         with open(CONFIG_FILE, "r", encoding="utf-8") as f:
             config_data = json.load(f)
-            #print("配置文件已加载")
-            #print("配置内容:", json.dumps(config_data, ensure_ascii=False, indent=4))
             return config_data
     else:
         return {}
+    
 def validate_config(config_data):
     """
     验证配置数据的完整性和正确性
@@ -24,7 +23,7 @@ def validate_config(config_data):
     """
 
     bilibili_keys = [
-        "room_id", "credential", "song_request_permission", "next_request_permission"
+        "credential", "song_request_permission", "next_request_permission"
     ]
 
     for key in bilibili_keys:
@@ -33,7 +32,7 @@ def validate_config(config_data):
             return False
 
     # Check nested keys in credential
-    credential_keys = ["sessdata", "bili_jct"]
+    credential_keys = ["auth_code"]
     credential = config_data.get("bilibili", {}).get("credential", {})
     for key in credential_keys:
         value = credential.get(key)
@@ -82,10 +81,8 @@ def create_default_config():
 
     default_config = {
         "bilibili": {
-            "room_id": "",
             "credential": {
-                "sessdata": "",
-                "bili_jct": ""
+                "auth_code": "",
             },
             "song_request_permission": {
                 "streamer": True,

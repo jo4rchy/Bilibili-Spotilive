@@ -1,5 +1,3 @@
-# handler/song_queue.py
-
 import asyncio
 from utils.log_timer import timestamp
 
@@ -38,7 +36,7 @@ class SongQueue:
         name = song.get("name", "Unknown")
         artists = ", ".join(a.get("name", "") for a in song.get("artists", []))
         info = f"{name} - {artists}" if artists else name
-        print(f"[{self.__class__.__name__}][{timestamp()}][队列] 点歌成功，加入{role}队列：'{info}'")
+        print(f"[{self.__class__.__name__}]{timestamp()}[队列] 点歌成功，加入{role}队列：'{info}'")
 
     async def remove_at(self, index: int) -> bool:
         """
@@ -46,7 +44,7 @@ class SongQueue:
         返回 True 表示删除成功，False 表示索引无效。
         """
         if index < 0 or index >= self._queue.qsize():
-            print(f"[{self.__class__.__name__}][{timestamp()}][队列] 删除失败，索引 {index} 无效。")
+            print(f"[{self.__class__.__name__}]{timestamp()}[队列] 删除失败，索引 {index} 无效。")
             return False
 
         temp_queue = asyncio.Queue()
@@ -61,7 +59,7 @@ class SongQueue:
                 name = song.get("name", "Unknown")
                 artists = ", ".join(a.get("name", "") for a in song.get("artists", []))
                 info = f"{name} - {artists}" if artists else name
-                print(f"[{self.__class__.__name__}][{timestamp()}][队列] 已删除队列中第 {index} 首歌曲：'{info}'")
+                print(f"[{self.__class__.__name__}]{timestamp()}[队列] 已删除队列中第 {index} 首歌曲：'{info}'")
                 continue
             await temp_queue.put(item)
 
@@ -86,14 +84,14 @@ class SongQueue:
         返回 True 表示排序成功，False 表示失败（如索引无效）。
         """
         if not isinstance(new_order, list):
-            print(f"[{self.__class__.__name__}][{timestamp()}][队列] 重新排序失败，参数不是列表。")
+            print(f"[{self.__class__.__name__}]{timestamp()}[队列] 重新排序失败，参数不是列表。")
             return False
 
         temp_queue = asyncio.Queue()
         for item in new_order:
             await temp_queue.put(item)
         self._queue = temp_queue
-        print(f"[{self.__class__.__name__}][{timestamp()}][队列] 重新排序成功。")
+        print(f"[{self.__class__.__name__}]{timestamp()}[队列] 重新排序成功。")
         return True
 
     def is_empty(self) -> bool:
@@ -120,4 +118,4 @@ class SongQueue:
         """
         while not self._queue.empty():
             self._queue.get_nowait()
-        print(f"[{self.__class__.__name__}][{timestamp()}][队列] 已清空所有待播歌曲。")
+        print(f"[{self.__class__.__name__}]{timestamp()}[队列] 已清空所有待播歌曲。")

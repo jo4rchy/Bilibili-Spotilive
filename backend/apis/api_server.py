@@ -1,8 +1,7 @@
-from flask import Flask, render_template, request, jsonify, Response, send_from_directory, redirect
+from flask import Flask, request, jsonify, Response, redirect
 from flask_socketio import SocketIO, emit
 from flask_cors import CORS  # 导入CORS
 import time
-import threading
 import logging
 from utils.log_timer import timestamp
 import json
@@ -21,7 +20,7 @@ spotify_controller = None
 temp_song_queue = None
 default_mesage = {
             "message": "点歌队列空",
-            "result": "发送：点歌 + 歌名 即可点歌",
+            "result": "点歌发送：点歌 歌名(+歌手)",
             "albumCover": './images/Spotify.png'
         }
 
@@ -174,10 +173,19 @@ def np_index():
 def qw_no_slash():
     return redirect('/queue_widget/')  # 注意：重定向到带斜杠的路由
 
-# 2) 让 /nowplaying_widget/ 能直接返回 index.html
+# 2) 让 /queue_widget/ 能直接返回 index.html
 @app.route('/queue_widget/')
 def qw_index():
     return app.send_static_file('queue_widget/index.html')
+
+@app.route('/app')
+def app_no_slash():
+    return redirect('/app/')  # 注意：重定向到带斜杠的路由
+
+# 2) 让 /app/ 能直接返回 index.html
+@app.route('/app/')
+def app_index():
+    return app.send_static_file('app/index.html')
 
 @socketio.on('connect')
 def handle_connect():
@@ -212,12 +220,12 @@ def emit_queue(data):
 
 def emit_danmaku(data):
     """发送弹幕数据到前端"""
-    print(f"[{timestamp()}] [DANMAKU EMITTED]")
+    # print(f"[{timestamp()}] [DANMAKU EMITTED]")
     socketio.emit('danmaku_update', data)
 
 def emit_request(data):
     """发送请求数据到前端"""
-    print(f"[{timestamp()}] [REQUEST EMITTED]")
+    # print(f"[{timestamp()}] [REQUEST EMITTED]")
     socketio.emit('request_update', data)
     
 def clear_queue():

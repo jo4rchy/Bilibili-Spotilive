@@ -1,5 +1,3 @@
-import re
-import asyncio
 from typing import Optional, Dict
 from core.player_loop import next_song, request_song
 
@@ -37,13 +35,13 @@ def parse_request(danmaku, is_streamer: int) -> Optional[Dict]:
             return {
                 "user": {
                     "uname": getattr(danmaku, "uname"),
-                    "uid": getattr(danmaku, "uid"),
-                    "face": getattr(danmaku, "face", None),
+                    "uid": getattr(danmaku, "open_id"),
+                    "face": getattr(danmaku, "uface", None),
                     "is_streamer": is_streamer,
-                    "admin": getattr(danmaku, "admin"),
-                    "medal_is_light": getattr(danmaku, "medal_is_light"),
-                    "medal_level": getattr(danmaku, "medal_level", 0),
-                    "privilege_type": getattr(danmaku, "privilege_type", 0),
+                    "admin": getattr(danmaku, "is_admin"),
+                    "medal_is_light": getattr(danmaku, "fans_medal_level", 0) > 0,
+                    "medal_level": getattr(danmaku, "fans_medal_level", 0),
+                    "privilege_type": getattr(danmaku, "guard_level", 0),
                 },
                 "request": {
                     "type": "song",
@@ -55,13 +53,13 @@ def parse_request(danmaku, is_streamer: int) -> Optional[Dict]:
         return {
             "user": {
                 "uname": getattr(danmaku, "uname"),
-                "uid": getattr(danmaku, "uid"),
-                "face": getattr(danmaku, "face", None),
+                "uid": getattr(danmaku, "open_id"),
+                "face": getattr(danmaku, "uface", None),
                 "is_streamer": is_streamer,
-                "admin": getattr(danmaku, "admin"),
-                "medal_is_light": getattr(danmaku, "medal_is_light"),
-                "medal_level": getattr(danmaku, "medal_level", 0),
-                "privilege_type": getattr(danmaku, "privilege_type", 0),
+                "admin": getattr(danmaku, "is_admin"),
+                "medal_is_light": getattr(danmaku, "fans_medal_level", 0) > 0,
+                "medal_level": getattr(danmaku, "fans_medal_level", 0),
+                "privilege_type": getattr(danmaku, "guard_level", 0),
             },
             "request": {
                 "type": "next"
@@ -86,8 +84,5 @@ async def request_next_handler(request):
     :param request: 请求字典
     :return: True=已发起切歌/恢复默认；False=权限不足
     """
-    # 1. 基础权限判断
     next_perm = perm_handler.is_allowed(request)
-
-    # 2. 委托给 next_song 执行切歌逻辑，并返回它的结果
     return await next_song(request, next_perm)
