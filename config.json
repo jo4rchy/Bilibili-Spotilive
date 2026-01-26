@@ -1,9 +1,8 @@
 {
     "bilibili": {
-        "room_id": "14005966",
+        "room_id": "",
         "credential": {
-            "sessdata": "",
-            "bili_jct": ""
+            "auth_code": ""
         },
         "song_request_permission": {
             "streamer": true,
