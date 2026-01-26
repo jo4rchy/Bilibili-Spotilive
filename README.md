@@ -28,6 +28,13 @@
 - 运行pip install requirements.txt
 - 运行pyinstaller main.spec将项目编译成exe可执行文件
 
+- 第一次运行会自动在exe目录生成一个config.json
+- 填入：
+  - room_id: 直播间号
+  - auth_code：b站直播身份码
+  - spotify client_id
+  - spotify client_secret
+
 前端使用说明：
 - 控制面板地址：http://localhost:5001/app/
 - 正在播放地址：http://localhost:5001/nowplaying_widget/ 
