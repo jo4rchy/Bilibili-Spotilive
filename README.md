@@ -2,6 +2,37 @@
 
 **点歌机需要Spotify正式会员**
 
+## 后端使用说明：
+- 前往bilibili开放平台，申请开放平台Access Key ID，secret
+- 创建直播app，获取App ID
+- 将access key id，secret和appid填入main.py开头
+- 运行pip install requirements.txt
+- 运行pyinstaller main.spec将项目编译成exe可执行文件
+
+- 第一次运行会自动在exe目录生成一个config.json
+- 填入：
+  - room_id: 直播间号
+  - auth_code：b站直播身份码
+  - spotify client_id
+  - spotify client_secret
+ 
+## 如何获取spotify api：
+- Spotify API
+  - 前往[Spotify Developer](https://developer.spotify.com/dashboard) 如图页面创建Spotify 的API
+  - Redirect Url填写 `http://127.0.0.1:8888/callback`,api和sdk不需要勾选
+  - 创建好后可以获得Spotify 的client ID和secret 
+
+![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/spotify_api.png)
+
+## 前端使用说明：
+- 控制面板地址：http://localhost:5001/app/
+- 正在播放地址：http://localhost:5001/nowplaying_widget/ 
+- 点歌队列地址：http://localhost:5001/queue_widget/
+
+| 弹幕点歌历史 | 歌曲快速搜索 | 队列快速修改 |
+| - | - | - |
+| ![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/frontend-0.png) | ![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/frontend-1.png) | ![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/frontend-2.png) |
+
 ## 点歌机后端
 - 在原有的基础上优化点歌逻辑
 - 开放API端点，允许前端调用并控制点歌机
@@ -16,35 +47,3 @@
 - 快速删除队列中不合适的点歌
 - 浅色/深色模式可用
 - 使用5173端口
-
-| 弹幕点歌历史 | 歌曲快速搜索 | 队列快速修改 |
-| - | - | - |
-| ![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/frontend-0.png) | ![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/frontend-1.png) | ![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/frontend-2.png) |
-
-后端使用说明：
-- 前往bilibili开放平台，申请开放平台Access Key ID，secret
-- 创建直播app，获取App ID
-- 将access key id，secret和appid填入main.py开头
-- 运行pip install requirements.txt
-- 运行pyinstaller main.spec将项目编译成exe可执行文件
-
-- 第一次运行会自动在exe目录生成一个config.json
-- 填入：
-  - room_id: 直播间号
-  - auth_code：b站直播身份码
-  - spotify client_id
-  - spotify client_secret
- 
-如何获取spotify api：
-- Spotify API
-  - 前往[Spotify Developer](https://developer.spotify.com/dashboard) 如图页面创建Spotify 的API
-  - Redirect Url填写 `http://127.0.0.1:8888/callback`,api和sdk不需要勾选
-  - 创建好后可以获得Spotify 的client ID和secret 
-
-![](https://github.com/jo4rchy/Bilibili-Spotilive/blob/main/resources/spotify_api.png)
-
-前端使用说明：
-- 控制面板地址：http://localhost:5001/app/
-- 正在播放地址：http://localhost:5001/nowplaying_widget/ 
-- 点歌队列地址：http://localhost:5001/queue_widget/
-
