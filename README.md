@@ -5,8 +5,8 @@
 **点歌机需要Spotify正式会员**
 
 ## 点歌机使用说明：
-- 前往bilibili开放平台，申请开放平台Access Key ID，secret
-- 创建直播app，获取App ID
+- 前往[bilibili开放平台](https://open-live.bilibili.com/open-manage)，申请开放平台Access Key ID，secret
+- 前往[创建直播app项目](https://open-live.bilibili.com/miniapp/create)，创建并获取App ID
 
 - 第一次运行会自动在exe目录生成一个config.json
 - 填入：
