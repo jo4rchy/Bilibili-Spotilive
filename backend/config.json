@@ -1,7 +1,10 @@
 {
     "bilibili": {
-        "room_id": "14005966",
+        "room_id": "",
         "credential": {
+            "access_key_id": "",
+            "access_key_secret": "",
+            "app_id": "",
             "auth_code": ""
         },
         "song_request_permission": {

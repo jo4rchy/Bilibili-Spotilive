@@ -73,5 +73,5 @@ exe = EXE(
     upx=True,
     runtime_tmpdir=None,  # Extracts to a temporary folder
     console=True,         # Show the console window for logs
-    icon=None,            # You can specify an 'icon.ico' file here
+    icon='icon.ico',            # You can specify an 'icon.ico' file here
 )
