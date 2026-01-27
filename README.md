@@ -1,4 +1,4 @@
-# Bilibili-Spotilive v1.0.5
+# Bilibili-Spotilive v1.0.6
 
 **点歌机需要Spotify正式会员**
 
