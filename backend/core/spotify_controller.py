@@ -1,5 +1,6 @@
 import asyncio
 import re
+import time
 import random
 import difflib
 from spotipy import Spotify
@@ -12,12 +13,16 @@ import requests
 session = requests.Session()
 session.headers["Accept-Language"] = "zh-CN,zh;q=0.9"
 
-def normalize_text(text: str) -> str:
-    """
-    将文本转换为简体，然后统一替换常见异体字。
-    """
-    t2s_converter = OpenCC('t2s')
-    return t2s_converter.convert(text)
+def normalize_text(text):
+    if not text: return ""
+    # 移除括号内容及特殊符号
+    text = re.sub(r'\(.*?\)|\[.*?\]|【.*?】', '', text)
+    # 统一分隔符为空格
+    text = text.replace('/', ' ').replace(':', ' ').replace('-', ' ').replace('|', ' ')
+    return " ".join(text.split()).strip()
+
+s2t = OpenCC('s2t')  # 简体转繁体
+t2s = OpenCC('t2s')  # 繁体转简体
 
 
 class SpotifyController:
@@ -38,118 +43,115 @@ class SpotifyController:
         )
         self.sp = Spotify(auth_manager=self.sp_oauth, requests_session=session)
         
-    def _search_song(self, song_name, limit):
-        """
-        高度优化的 Spotify 搜索逻辑
-        支持：歌手拆分、版本动态加权、错误匹配拦截
-        """
+    def _search_song(self, song_name, limit=5):
         try:
-            # 1. 关键词预处理
-            song_name = song_name.strip()
-            if not song_name:
-                return None
-
-            # 检查并拆分歌手 (支持 +, |, / 分隔符)
-            if '+' in song_name or '|' in song_name or '/' in song_name:
-                # 使用正则匹配分隔符，但只拆分一次，确保第一个分隔符后面才是歌手
-                parts = re.split(r'\s*[+|/]\s*', song_name, maxsplit=1)
+            raw_input = song_name.strip()
+            if not raw_input: return None
+            # 统一转简体用于比对
+            raw_query_s = t2s.convert(raw_input.lower())
+            
+            # 1. 解析歌手与歌名
+            if '+' in raw_input:
+                parts = re.split(r'\s*\+\s*', raw_input, maxsplit=1)
                 song_query = parts[0].strip()
                 artist_query = parts[1].strip() if len(parts) > 1 else None
-                search_query = f"track:{song_query} artist:{artist_query}"
             else:
-                # 没有分隔符，整体作为歌名（适合 "k歌之王 live" 这种输入）
-                song_query = song_name
-                artist_query = None
-                search_query = song_name
+                song_query, artist_query = raw_input, None
 
-            query_normalized = normalize_text(song_query).lower()
-            artist_normalized = normalize_text(artist_query).lower() if artist_query else None
-
-            print(f"[{self.room_id}]{timestamp()}[SPOT] [搜索] 关键词: {song_query} | 歌手: {artist_query or '未提供'}")
-
-            # 2. 执行 Spotify 搜索
-            results = self.sp.search(q=search_query, type='track', limit=limit)
-            tracks = results.get('tracks', {}).get('items', [])
-
-            for track in tracks:
-                print(f"[{self.room_id}]{timestamp()}[SPOT] [搜索] {track['name']} - {track['artists'][0]['name']} (流行度: {track.get('popularity', 0)})") 
+            # 2. 阶梯搜索策略
+            search_steps = []
+            if any(w in raw_input.lower() for w in ['live', '现场', 'remix']):
+                search_steps.append({"q": f"{song_query} {artist_query}" if artist_query else song_query, "desc": "版本组合搜索"})
+            search_steps.append({"q": f"track:{song_query} artist:{artist_query}" if artist_query else song_query, "desc": "高级精确搜索"})
             
-            if not tracks:
-                print(f"[{self.room_id}]{timestamp()}[SPOT] [搜索] Spotify 未返回任何结果。")
+            print(f"[{self.room_id}]{timestamp()}[SPOT] [搜索] 输入: {raw_input}")
+
+            tracks = []
+            hit_desc = "无"
+            for step in search_steps:
+                results = self.sp.search(q=step['q'], type='track', limit=limit)
+                items = results.get('tracks', {}).get('items', [])
+                if items:
+                    tracks = items
+                    hit_desc = step['desc']
+                    break
+
+            if not tracks: 
+                print(f"[{self.room_id}]{timestamp()}[SPOT] [搜索] 未找到匹配的歌曲")
                 return None
 
-            # 3. 动态打分与过滤机制
-            # 负面关键词列表：这些词在歌名中出现通常意味着“非原版”
-            negative_keywords = ['live', 'version', 'air', 'remaster', 'instrumental', 'karaoke', 'edit', 'remix', 'piano', 'dj']
-            
-            # 核心：动态调整惩罚/奖励（如果用户搜了这些词，就转罚为奖）
-            current_negatives = [w for w in negative_keywords if w not in query_normalized]
-            positive_boosts = [w for w in negative_keywords if w in query_normalized]
+            # 3. 评分逻辑 (重点修正歌手权重与覆盖判定)
+            # 提取干净的关键词列表，排除 '+' 等符号
+            query_words = [t2s.convert(w.lower()) for w in re.split(r'[\s\+]+', raw_input) if len(w) > 0]
+            q_artist_s = t2s.convert(artist_query.lower()) if artist_query else None
+            wants_live = any(word in raw_input.lower() for word in ['live', '现场'])
 
             scored_tracks = []
-            for track in tracks:
-                t_name = track.get('name', '')
-                t_name_norm = normalize_text(t_name).lower()
-                t_artists = [normalize_text(a['name']).lower() for a in track.get('artists', [])]
+            for idx, track in enumerate(tracks):
+                t_raw_name = track.get('name', '')
+                t_main_artist = track['artists'][0]['name']
                 
-                # --- 硬性过滤 A: 歌手校验 ---
-                if artist_normalized and not any(artist_normalized in a for a in t_artists):
-                    continue
+                # 归一化处理
+                t_full_name_s = t2s.convert(t_raw_name.lower())
+                t_pure_name_s = t2s.convert(normalize_text(t_raw_name).lower())
+                t_artist_s = t2s.convert(t_main_artist.lower())
+                t_all_metadata = f"{t_full_name_s} {t_artist_s}"
 
-                # --- 计算基础分 (Spotify 流行度 0-100) ---
-                score = track.get('popularity', 0)
+                # A. 歌手匹配 (这是最高优先级)
+                artist_match = False
+                if q_artist_s:
+                    # 只要歌手名字包含或者被包含，就判定匹配
+                    if q_artist_s in t_artist_s or t_artist_s in q_artist_s:
+                        artist_match = True
+
+                # B. 相似度计算
+                combined_s = f"{t_pure_name_s} {t_artist_s}"
+                sim_pure = difflib.SequenceMatcher(None, raw_query_s, t_pure_name_s).ratio()
+                sim_comb = difflib.SequenceMatcher(None, raw_query_s, combined_s).ratio()
+                best_sim = max(sim_pure, sim_comb)
+
+                # C. 全词覆盖检测
+                all_covered = all(word in t_all_metadata for word in query_words)
+
+                # D. 评分计算
+                score = track.get('popularity', 0) + (best_sim * 100)
                 
-                # --- 算法 1: 文本相似度校验 (防止“k哥之王”变“淘汰”) ---
-                # 计算搜索词与结果歌名的相似度比例 (0.0 - 1.0)
-                similarity = difflib.SequenceMatcher(None, query_normalized, t_name_norm).ratio()
+                # 歌手匹配加权 (大幅提升，确保压过版本分)
+                if artist_match:
+                    score += 300 
+                elif q_artist_s:
+                    score -= 100
+
+                # 全词覆盖加权
+                if all_covered: score += 200
                 
-                # 如果相似度极低且关键词未包含，直接大幅扣分
-                if similarity < 0.3 and query_normalized not in t_name_norm:
-                    score -= 100 
+                # 版本偏好分
+                res_has_live = any(word in t_raw_name.lower() for word in ['live', '现场'])
+                if wants_live:
+                    if res_has_live: score += 100
+                    else: score -= 50 # 如果要live结果没live，小扣分
+                else:
+                    if res_has_live: score -= 100 # 不要live结果有live，重扣
 
-                # --- 算法 2: 惩罚/奖励加权 ---
-                # 惩罚：未请求的特殊版本 (如 AIR, Version)
-                if any(word in t_name_norm for word in current_negatives):
-                    score -= 60
-                
-                # 奖励：用户主动索要的版本 (如搜了live给live加分)
-                if any(word in t_name_norm for word in positive_boosts):
-                    score += 50
+                scored_tracks.append({"track": track, "score": score, "sim": best_sim, "covered": all_covered, "artist_match": artist_match})
+                print(f"  {idx+1}. [{t_main_artist}] {t_raw_name} | Score:{score:.1f} | Sim:{best_sim:.2f} | Match:{artist_match}")
 
-                # 奖励：纯净度奖励 (原版通常没有括号后缀，长度与查询词最接近)
-                len_diff = abs(len(t_name_norm) - len(query_normalized))
-                if len_diff <= 2:
-                    score += 40
-                
-                # 奖励：关键词覆盖
-                if query_normalized in t_name_norm:
-                    score += 20
-
-                scored_tracks.append((track, score))
-                # print(f"DEBUG: {t_name} | Score: {score} | Similarity: {similarity:.2f}")
-
-            # 4. 最终评估 (设置及格线)
-            if scored_tracks:
-                scored_tracks.sort(key=lambda x: x[1], reverse=True)
-                best_track, best_score = scored_tracks[0]
-                
-                # 及格线阈值：设定为 55 分
-                # 一个普通的热门歌曲 (50分) + 长度奖励 (40分) 通常有 90 分左右
-                # 如果分数低于 55，说明相似度极低或是被重罚的版本
-                if best_score < 55:
-                    print(f"[{self.room_id}]{timestamp()}[SPOT] [搜索] 最佳匹配 '{best_track['name']}' 分数过低({best_score})，已拦截无效匹配。")
-                    return None
-
-                print(f"[{self.room_id}]{timestamp()}[SPOT] [搜索] 最终选中: {best_track['name']} - {best_track['artists'][0]['name']} (Score: {best_score})")
-                return best_track
+            # 4. 判定
+            scored_tracks.sort(key=lambda x: x['score'], reverse=True)
+            best = scored_tracks[0]
             
-            print(f"[{self.room_id}]{timestamp()}[SPOT] [搜索] 找到 {len(tracks)} 个结果，但均未通过评分。")
+            # 及格线判定：歌手对上或者是全词覆盖
+            if best['artist_match'] or best['covered'] or best['sim'] > 0.75:
+                target = best['track']
+                print(f"[{self.room_id}]{timestamp()}[SPOT] [选中] {target['name']} - {target['artists'][0]['name']} (分值:{best['score']:.1f})")
+                return target
+            
+            print(f"[{self.room_id}]{timestamp()}[SPOT] [拦截] 最佳匹配匹配度不足")
             return None
-
         except Exception as e:
-            print(f"[{self.room_id}]{timestamp()}[SPOT] [ERROR] 搜索逻辑崩溃: {e}")
+            print(f"[{self.room_id}]{timestamp()}[SPOT] [ERROR] {e}")
             return None
-
+        
     async def search_song(self, song_name: str, limit: int = 5):
         return await asyncio.to_thread(self._search_song, song_name, limit)
     
@@ -228,11 +230,22 @@ class SpotifyController:
         await asyncio.to_thread(self._restore_default_playlist)
 
     def _get_current_playback(self):
-        try:
-            return self.sp.currently_playing(market='HK') or None
-        except Exception as e:
-            print(f"[{self.room_id}]{timestamp()}[SPOT] [ERROR] 获取当前播放信息出错: {e}")
-            return None
+        max_retries = 3
+        retry_delay = 1  # 重试间隔秒数
+        
+        for attempt in range(1, max_retries + 1):
+            try:
+                # 尝试调用 Spotify API
+                return self.sp.currently_playing(market='HK') or None
+            except Exception as e:
+                # 如果是最后一次尝试也失败了
+                if attempt == max_retries:
+                    print(f"[{self.room_id}]{timestamp()}[SPOT] [ERROR] 获取当前播放信息持续超时，重试 {max_retries} 次均失败: {e}")
+                    return None
+                
+                # 打印重试提示并等待
+                print(f"[{self.room_id}]{timestamp()}[SPOT] [WARN] 获取播放信息超时 (第 {attempt} 次)，正在重试...")
+                time.sleep(retry_delay)
 
     async def get_current_playback(self):
         return await asyncio.to_thread(self._get_current_playback)

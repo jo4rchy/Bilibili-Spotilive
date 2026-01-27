@@ -119,3 +119,36 @@ class SongQueue:
         while not self._queue.empty():
             self._queue.get_nowait()
         print(f"[{self.__class__.__name__}]{timestamp()}[队列] 已清空所有待播歌曲。")
+
+    async def print_queue(self) -> str:
+        """
+        打印并返回当前队列的可视化列表。
+        格式: [序号] 歌名 - 歌手 (点歌人)
+        """
+        if self.is_empty():
+            print(f"[{self.__class__.__name__}]{timestamp()}[队列] 当前播放队列为空。")
+            return "当前播放队列为空。"
+
+        # 获取内部 deque 对象
+        queue_list = list(self._queue._queue)
+        
+        lines = []
+        lines.append(f"\n--- 当前播放队列 (共 {len(queue_list)} 首) ---")
+        
+        for idx, item in enumerate(queue_list):
+            song = item.get("song", {})
+            name = song.get("name", "Unknown")
+            artists = ", ".join(a.get("name", "") for a in song.get("artists", []))
+            
+            # 提取点歌人昵称
+            user = item.get("request", {}).get("user", {})
+            user_name = user.get("uname", "未知用户")
+            
+            info = f"[{idx}] {name} - {artists} (点歌人: {user_name})"
+            lines.append(info)
+            
+        lines.append("------------------------------------------")
+        
+        output = "\n".join(lines)
+        print(output)
+        return output
