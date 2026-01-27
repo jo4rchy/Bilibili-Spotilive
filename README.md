@@ -1,5 +1,7 @@
 # Bilibili-Spotilive v1.0.6
 
+![下载地址](https://github.com/jo4rchy/Bilibili-Spotilive/releases/tag/v1.0.6-Stable)
+
 **点歌机需要Spotify正式会员**
 
 ## 点歌机使用说明：
