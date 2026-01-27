@@ -2,19 +2,19 @@
 
 **点歌机需要Spotify正式会员**
 
-## 后端使用说明：
+## 点歌机使用说明：
 - 前往bilibili开放平台，申请开放平台Access Key ID，secret
 - 创建直播app，获取App ID
-- 将access key id，secret和appid填入main.py开头
-- 运行pip install requirements.txt
-- 运行pyinstaller main.spec将项目编译成exe可执行文件
 
 - 第一次运行会自动在exe目录生成一个config.json
 - 填入：
   - room_id: 直播间号
+  - access_key_id：b站开放平台accesskeyid
+  - access_key_secret：b站开放平台accesskeysecret
+  - app_id：直播appid
   - auth_code：b站直播身份码
-  - spotify client_id
-  - spotify client_secret
+  - spotify client_id：Spotify api client_id
+  - spotify client_secret：Spotify api client_secret
  
 ## 如何获取spotify api：
 - Spotify API
@@ -26,8 +26,8 @@
 
 ## 前端使用说明：
 - 控制面板地址：http://localhost:5001/app/
-- 正在播放地址：http://localhost:5001/nowplaying_widget/ 
-- 点歌队列地址：http://localhost:5001/queue_widget/
+- OBS添加浏览器采集-正在播放小组件：http://localhost:5001/nowplaying_widget/ 
+- OBS添加浏览器采集-点歌队列小组件：http://localhost:5001/queue_widget/
 
 | 弹幕点歌历史 | 歌曲快速搜索 | 队列快速修改 |
 | - | - | - |
