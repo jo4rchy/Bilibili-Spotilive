@@ -32,7 +32,8 @@ def validate_config(config_data):
             return False
 
     # Check nested keys in credential
-    credential_keys = ["auth_code"]
+    credential_keys = ["auth_code", "access_key_id", "access_key_secret", "app_id"]
+    
     credential = config_data.get("bilibili", {}).get("credential", {})
     for key in credential_keys:
         value = credential.get(key)
@@ -80,8 +81,12 @@ def create_default_config():
     """
 
     default_config = {
+        "room_id": "",
         "bilibili": {
             "credential": {
+                "access_key_id": "",
+                "access_key_secret": "",
+                "app_id": "",
                 "auth_code": "",
             },
             "song_request_permission": {
