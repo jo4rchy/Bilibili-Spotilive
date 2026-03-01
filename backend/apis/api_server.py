@@ -4,6 +4,7 @@ from flask_cors import CORS  # 导入CORS
 import time
 import logging
 from utils.log_timer import timestamp
+from handler.blacklist_handler import blacklist
 import json
 import asyncio
 import os
@@ -74,6 +75,11 @@ def api_start():
 def api_stop():
     stop_machine()
     return jsonify({'status': 'stopped'})
+
+@app.route('/api/blacklist/reload', methods=['GET'])
+def api_reload_blacklist():
+    blacklist.reload()
+    return jsonify({'status': 'reloaded'})
 
 # --- Queue API ---
 @app.route('/api/queue/<queue_type>', methods=['GET'])

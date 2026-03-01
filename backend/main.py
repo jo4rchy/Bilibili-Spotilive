@@ -9,20 +9,15 @@ from config.config import load_config, create_default_config, validate_config
 from apis.api_server import set_api_spotify_controller, start_api_server
 from core.spotify_controller import SpotifyController
 from handler.danmaku_handler import handle_danmaku
+from handler.blacklist_handler import blacklist
 from core.player_loop import set_player_spotify_controller, player_loop
 from handler.permission_handler import PermissionHandler
 from handler.request_handler import set_request_spotify_controller, set_permission_handler
 from utils.log_timer import timestamp
 
-# ACCESS_KEY_ID, ACCESS_KEY_SECRET需要去 B 站开放平台申请
-# https://open-live.bilibili.com/open-manage
-# ACCESS_KEY_ID 和 ACCESS_KEY_SECRET 请妥善保管，避免泄露
-# APP_ID 需要创建应用后获取
-# ROOM_OWNER_AUTH_CODE 是主播身份码
-
 ACCESS_KEY_ID = ''
 ACCESS_KEY_SECRET = ''
-APP_ID = '' 
+APP_ID = ''
 ROOM_OWNER_AUTH_CODE = ''
 
 bilibili_client = None
@@ -55,27 +50,27 @@ async def main():
     config = load_config()
 
     if not config:
-        print(f"{timestamp()}[config] 配置文件加载失败，正在创建默认配置...")
+        print("配置文件加载失败，正在创建默认配置...")
         create_default_config()
         config = load_config()
-        print(f"{timestamp()}[config] 默认配置文件已创建，请根据进行配置后重新运行程序。")
-        print(f"{timestamp()}[config] 前往 https://open-live.bilibili.com/open-manage 申请Access Key ID，Access Key Secret，App ID。")
-        print(f"{timestamp()}[config] 程序将在10秒后退出...")
-        await asyncio.sleep(10)
+
+    if not validate_config(config):
+        print("配置文件不完整，请完善配置后重新启动程序。")
+        await asyncio.sleep(1)
+        print("配置文件不完整，请完善配置后重新启动程序。")
+        await asyncio.sleep(1)
+        print("配置文件不完整，请完善配置后重新启动程序。")
+        await asyncio.sleep(1)
+        print("配置文件不完整，请完善配置后重新启动程序。")
+        await asyncio.sleep(1)
+        print("配置文件不完整，请完善配置后重新启动程序。")
+        await asyncio.sleep(1)
+        print("配置文件不完整，请完善配置后重新启动程序。")
+        await asyncio.sleep(1)
+        print("配置文件不完整，请完善配置后重新启动程序。")
+        await asyncio.sleep(1)
         return
     
-    config_valid = validate_config(config)
-    if not config_valid:
-        print(f"{timestamp()}[config] 配置文件验证失败，请检查配置文件中的必填项是否已正确填写。")
-        print(f"{timestamp()}[config] 前往 https://open-live.bilibili.com/open-manage 申请Access Key ID，Access Key Secret，App ID。")
-        print(f"{timestamp()}[config] 程序将在10秒后退出...")
-        await asyncio.sleep(10)
-        return
-    print(f"{timestamp()}[config] 配置文件加载并验证通过。")
-    
-    ACCESS_KEY_ID = config["bilibili"]["credential"]["access_key_id"]
-    ACCESS_KEY_SECRET = config["bilibili"]["credential"]["access_key_secret"]
-    APP_ID = config["bilibili"]["credential"]["app_id"]
     ROOM_OWNER_AUTH_CODE = config["bilibili"]["credential"]["auth_code"]
 
     bilibili_client = blivedm.OpenLiveClient(
@@ -94,6 +89,8 @@ async def main():
     set_api_spotify_controller(spotify_ctrl)
     set_player_spotify_controller(spotify_ctrl)
     set_request_spotify_controller(spotify_ctrl)
+
+    blacklist.reload()
 
     start_api()
 
@@ -163,8 +160,6 @@ class MyHandler(blivedm.BaseHandler):
     #     except Exception as e:
     #         print(f"处理进入房间任务时崩溃: {e}")
     # 进房欢迎，自动放歌，开发中。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。。
-
-
 
     # def _on_open_live_super_chat_delete(self, client: blivedm.OpenLiveClient, message: open_models.SuperChatDeleteMessage):
     #     print(f'[{message.room_id}] 删除醒目留言 message_ids={message.message_ids}')

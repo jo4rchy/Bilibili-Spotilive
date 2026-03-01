@@ -1,18 +1,18 @@
 import asyncio
-import time
 from utils.log_timer import timestamp
-from handler.queue_manager import song_queue, song_queue_guard, song_queue_streamer, print_queue_states
+from handler.queue_manager import song_queue, song_queue_guard, song_queue_streamer
+from handler.blacklist_handler import blacklist
 from apis.obs_widget import create_message_message, create_queue_message
 from apis.api_server import emit_message, emit_queue, clear_queue, emit_request
 from typing import Optional, Dict
 
 spotify_ctrl = None
 current_request: Optional[Dict] = None
-_last_print_log_time = 0.0
 
 def set_player_spotify_controller(controller):
     global spotify_ctrl
     spotify_ctrl = controller
+
 
 # Emit functions ------------------------------------------------------------
 async def emit_message_to_widget(message_data):
@@ -29,20 +29,13 @@ async def _emit_simple(text: str, subtext: str = "", song: Optional[Dict] = None
     await emit_message_to_widget(msg)
 
 async def _emit_queue_status():
-    global _last_print_log_time
     queue_msg = await create_queue_message()
-
     if queue_msg:
         await emit_queue_to_widget(queue_msg)
     else:
         guide_msg = create_message_message("点歌队列空", "点歌发送：点歌 歌名(+歌手)")
         clear_queue()
         await emit_message_to_widget(guide_msg)
-
-    # now = time.time()
-    # if now - _last_print_log_time > 3.0:  # 设置 3 秒冷却，可根据需求调整
-    #     await print_queue_states()
-    #     _last_print_log_time = now
 
 async def _feedback_and_update(text: str, subtext: str = "", song: Optional[Dict] = None, delay: float = 3.0):
     await _emit_simple(text, subtext, song)
@@ -220,6 +213,19 @@ async def request_song(request: Dict, request_perm: bool) -> bool:
         #     start_ms = request["request"]["start_ms"]
         #     spotify_ctrl._play_song(song, start_ms=start_ms)
         #     return True
+
+        hit = blacklist.check_song(song)
+        if hit.ok:
+            reason = hit.reason or "歌曲被黑名单拦截"
+            failure_message = {
+                "user": f"请求者: {user.get('uname', '未知用户')}",
+                "face": song.get("album", {}).get("images", [{}])[0].get("url", None),
+                "message": f"点歌失败: {reason}",
+            }
+            print(f"[黑名单拦截] {reason} → {song.get('name', 'Unknown')} - {artist}")
+            await emit_request_to_electron(failure_message)
+            await _feedback_and_update("点歌失败", "违禁歌曲/艺人")
+            return False
 
         if current_request is None:
             success_message = {
